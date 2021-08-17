@@ -21,6 +21,8 @@ import numpy as np
 import argparse
 import datetime
 
+np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
+
 # Oof
 import eval as eval_script
 
@@ -248,9 +250,13 @@ def train():
 
     data_loader = data.DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
-                                  shuffle=True, collate_fn=detection_collate,
+                                  shuffle=False, collate_fn=detection_collate,
                                   pin_memory=True)
-    
+
+    #data_loader = data.DataLoader(dataset, args.batch_size,
+    #                              num_workers=args.num_workers,
+    #                              shuffle=True, collate_fn=detection_collate,
+    #                              pin_memory=True)
     
     save_path = lambda epoch, iteration: SavePath(cfg.name, epoch, iteration).get_path(root=args.save_folder)
     time_avg = MovingAverage()
@@ -331,7 +337,7 @@ def train():
 
                 if iteration % 10 == 0:
                     eta_str = str(datetime.timedelta(seconds=(cfg.max_iter-iteration) * time_avg.get_avg())).split('.')[0]
-                    
+
                     total = sum([loss_avgs[k].get_avg() for k in losses])
                     loss_labels = sum([[k, loss_avgs[k].get_avg()] for k in loss_types if k in losses], [])
                     

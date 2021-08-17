@@ -158,8 +158,14 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
             # Masks are drawn on the GPU, so don't copy
             masks = t[3][idx]
         classes, scores, boxes = [x[idx].cpu().numpy() for x in t[:3]]
+        scores  = scores[classes==0]
+        boxes = boxes[classes==0]
+        classes = classes[classes == 0]
+
 
     num_dets_to_consider = min(args.top_k, classes.shape[0])
+    ## edited
+    #num_dets_to_consider = min(args.top_k, np.sum(classes==0))
     for j in range(num_dets_to_consider):
         if scores[j] < args.score_threshold:
             num_dets_to_consider = j
@@ -189,6 +195,8 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
     if args.display_masks and cfg.eval_mask_branch and num_dets_to_consider > 0:
         # After this, mask is of size [num_dets, h, w, 1]
         masks = masks[:num_dets_to_consider, :, :, None]
+        ## edited
+        #masks = masks[classes == 0, :, :, None]
         
         # Prepare the RGB images for each mask given their color (size [num_dets, h, w, 1])
         colors = torch.cat([get_color(j, on_gpu=img_gpu.device.index).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
@@ -234,6 +242,17 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
         return img_numpy
 
     if args.display_text or args.display_bboxes:
+        ## edited: plot number of cl classes
+        text_str = 'boards: %d' % (num_dets_to_consider)
+        font_face = cv2.FONT_HERSHEY_DUPLEX
+        font_scale = 0.6
+        font_thickness = 1
+        text_w, text_h = cv2.getTextSize(text_str, font_face, font_scale, font_thickness)[0]
+        x1, y1 = 0, 18
+        text_pt = (x1, y1 - 3)
+        cv2.rectangle(img_numpy, (x1, y1), (x1 + text_w, y1 - text_h - 4), [255, 255, 255], -1)
+        cv2.putText(img_numpy, text_str, text_pt, font_face, font_scale, [0, 0, 0], font_thickness, cv2.LINE_AA)
+
         for j in reversed(range(num_dets_to_consider)):
             x1, y1, x2, y2 = boxes[j, :]
             color = get_color(j)
